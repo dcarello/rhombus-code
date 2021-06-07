@@ -105,8 +105,8 @@ def main():
         content = resp.content
         data = json.loads(content)
         print(resp.status_code)
+        
         count = 0
-
         baseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
         header = ['Name', 'Date', 'Camera', 'Sighting']
         csv_data = []
@@ -125,6 +125,7 @@ def main():
             #csv_data[count].append(baseURL + value['thumbnailS3Key'])
             csv_data[count].append(count + 1)
             count += 1
+            
         with open('Report/interns_second.csv', 'w', newline = '') as f:
             writer = csv.writer(f)     # create the csv writer
             writer.writerow(header)    # write the header
