@@ -6,13 +6,31 @@ import calendar
 import csv
 import sys
 import os
+import argparse
+
+def argparser():
+    my_parser = argparse.ArgumentParser()
+
+    my_parser.add_argument('APIkey', type=str, help='Get this from your console')
+    my_parser.add_argument('-s', '--startTime', type=str, help='Add the end search time in yyyy-mm-dd~(0)0:00:00 or default to 1 hour before current time')
+    my_parser.add_argument('-e', '--endTime', type=str, help='Add the end search time in yyyy-mm-dd~(0)0:00:00 or default to current time')
+    my_parser.add_argument('-f', '--filter', type=str, help= 'Choose a filter', choices=['alert','trusted','named','other'], default='named')
+    my_parser.add_argument('-n', '--name', type = str, help = 'Searches for name')
+    my_parser.add_argument('-c', '--cameraName', type=str, help='Name of camera in the console')
+    my_parser.add_argument('--csv', type=str, help= 'Name the csv file', default='report')
+    my_parser.add_argument('-r', '--report', type=str, help='Name the folder for csv file and thumbnails', default='Report')
+
+    args = my_parser.parse_args()
+    return args
+
+args = argparser()
 
 def saving_img(thumbnail, name, count):
     if __name__ == "__main__":
         #url of the api
         endpoint = thumbnail
 
-        api_key = "9Ts3iQ_HSZGHEqwxZnPKpA"
+        api_key = args.APIkey
 
         sess = requests.session()
 
@@ -30,9 +48,9 @@ def saving_img(thumbnail, name, count):
         verify=False)
 
         content = resp.content
-        print(resp.status_code)
+        #print(resp.status_code)
 
-        with open('Report/' + 'Sighting #' + str(count + 1) + '_' + name + '.jpg', 'wb') as f:
+        with open(args.report +'/' + 'Sighting #' + str(count + 1) + '_' + name + '.jpg', 'wb') as f:
             # write the data
             f.write(content)
             f.close()
@@ -51,7 +69,7 @@ def camera_data():
     if __name__ == "__main__":
         # url of the api
         endpoint = "https://api2.rhombussystems.com/api/camera/getMinimalCameraStateList"
-        api_key = "9Ts3iQ_HSZGHEqwxZnPKpA"
+        api_key = args.APIkey
         sess = requests.session()
         today = datetime.now().replace(microsecond=0, second=0, minute=0)
         end_time = today
@@ -74,22 +92,26 @@ def camera_name(uuid, data):
         if uuid == value['uuid']:
             return value['name']
 
-def main():
+def recent_faces():
     if __name__ == "__main__":
         # url of the api
         endpoint = "https://api2.rhombussystems.com/api/face/getRecentFaceEventsV2"
-        api_key = "9Ts3iQ_HSZGHEqwxZnPKpA"
+        api_key = args.APIkey
         sess = requests.session()
         today = datetime.now().replace(microsecond=0, second=0, minute=0)
         end_time = today
         start_time =  (end_time - timedelta(days=365))
         # any parameters
-        # print("Start Time in yyyy-mm-dd (0)0:00:00)")
-        start = milliseconds_time(sys.argv[1])
-        # print("End Time in yyyy-mm-dd (0)0:00:00)")
-        end = milliseconds_time(sys.argv[2])
+        if args.startTime:
+            start = milliseconds_time(args.startTime)
+        else:
+            start = int(round((time.time() - 3600) * 1000))
+        if args.endTime:
+            end = milliseconds_time(args.endTime)
+        else:
+            end = int(round(time.time() * 1000))
         payload = {
-            "filter":{"types":["named"]},
+            "filter":{"types":[args.filter]},
             "interval":{
                 "end": end,
                 "start": start
@@ -104,30 +126,62 @@ def main():
         verify=False)
         content = resp.content
         data = json.loads(content)
-        print(resp.status_code)
-        
-        count = 0
-        baseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
-        header = ['Name', 'Date', 'Camera', 'Sighting']
-        csv_data = []
-        data_camera = camera_data()
-        os.mkdir('/Users/earthintern/rhombus-interns/face_project_versions/Report')
-        for value in data['faceEvents']:
-            timestamp = human_time(value['eventTimestamp'])
-            csv_data.append([])
-            name = value['faceName']
-            csv_data[count].append(name)
-            csv_data[count].append(timestamp)
-            camera = camera_name(value['deviceUuid'], data_camera)
-            csv_data[count].append(camera)
-            thumbnail = baseURL + value['thumbnailS3Key']
-            saving_img(thumbnail, name, count)
-            #csv_data[count].append(baseURL + value['thumbnailS3Key'])
-            csv_data[count].append(count + 1)
+        #print(resp.status_code)
+        return data
+
+def csv_add(value, csv_data, count, data_camera, baseURL, header):
+    timestamp = human_time(value['eventTimestamp'])
+    csv_data.append([])
+    name = value['faceName']
+    csv_data[count].append(name)
+    csv_data[count].append(timestamp)
+    camera = camera_name(value['deviceUuid'], data_camera)
+    csv_data[count].append(camera)
+    thumbnail = baseURL + value['thumbnailS3Key']
+    saving_img(thumbnail, name, count)
+    csv_data[count].append(count + 1)
+    with open(args.report + '/' + args.csv + '.csv', 'w', newline = '') as f:
+        writer = csv.writer(f)     # create the csv writer
+        writer.writerow(header)    # write the header
+        writer.writerows(csv_data) # write the data
+
+def csv_work(data_recentFaces):
+    count = 0
+    baseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
+    header = ['Name', 'Date', 'Camera', 'Sighting']
+    csv_data = []
+    data_camera = camera_data()
+    path = os.getcwd()
+    os.mkdir(path + '/' + args.report)
+    if args.name:
+        final_list = [event for event in data_recentFaces['faceEvents'] if event["faceName"] == args.name]
+        for value in final_list:
+            csv_add(value, csv_data, count, data_camera, baseURL, header)
             count += 1
-            
-        with open('Report/interns_second.csv', 'w', newline = '') as f:
-            writer = csv.writer(f)     # create the csv writer
-            writer.writerow(header)    # write the header
-            writer.writerows(csv_data) # write the data
+    elif args.cameraName:
+        for value in data_camera['cameraStates']:
+            if args.cameraName == value['name']:
+                uuid = value['uuid']
+        final_list = [event for event in data_recentFaces['faceEvents'] if event["deviceUuid"] == uuid]
+        for value in final_list:
+            csv_add(value, csv_data, count, data_camera, baseURL, header)
+            count += 1
+    elif args.cameraName and args.name:
+        for value in data_camera['cameraStates']:
+            if args.cameraName == value['name']:
+                uuid = value['uuid']
+        initial_list = [event for event in data_recentFaces['faceEvents'] if event["faceName"] == args.name]
+        final_list = [event for event in initial_list if event["deviceUuid"] == uuid]
+        for value in final_list:
+            csv_add(value, csv_data, count, data_camera, baseURL, header)
+            count += 1
+    else:
+        for value in data_recentFaces['faceEvents']:
+            csv_add(value, csv_data, count, data_camera, baseURL, header)
+            count += 1
+
+def main():
+    data_recentFaces = recent_faces()
+    csv_work(data_recentFaces)
+
 main()
