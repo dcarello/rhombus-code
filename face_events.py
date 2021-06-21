@@ -1,4 +1,3 @@
-from labels_photo import faceID
 import requests
 from datetime import datetime, timedelta
 import time
@@ -19,10 +18,10 @@ def main():
         start_time =  (end_time - timedelta(days=365))
         #any parameters
         payload = {
-            "filter":{"types":["other"]},
+            "filter":{"types":["named"]},
             "interval":{
-                "end": 100000000000000,
-                "start": 1
+                "end": 1623087000000,
+                "start": 1623081600000
             }
         }
         print(payload)
@@ -44,10 +43,8 @@ def main():
 
         baseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
         for value in data['faceEvents']:
-            face_IDs = value['faceId']
-            print(face_IDs)
-        #face_ID = data['faceEvents']['faceId']
-        #print(face_ID)
+            print(value['faceName'])
+            print(value['deviceUuid'])
         #gets the picture of unidentified person
         #thumbnail = baseURL + data['faceEvents']['thumbnailS3Key']
         #print(thumbnail)

@@ -98,4 +98,3 @@ def main():
     faceID()
 
 main()
-#use a for loop for each photo
