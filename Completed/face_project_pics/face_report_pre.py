@@ -30,6 +30,8 @@ def argparser():
 
 args = argparser()
 
+
+
 #decrypts the jpg and saves the image to a folder
 def saving_img(thumbnail, name, count):
     if __name__ == "__main__":
@@ -48,17 +50,15 @@ def saving_img(thumbnail, name, count):
             "x-auth-scheme": "api-token",
             "x-auth-apikey": api_key
         }
-
         resp = sess.get(endpoint,
         verify=False)
-
         content = resp.content
-
         #opens the folder and writes the image to it
-        with open(args.report +'/' + 'Sighting #' + str(count + 1) + '_' + name + '.jpg', 'wb') as f:
+        with open(args.report +'/' + name + '_' + str(count + 1) + '.jpg', 'wb') as f:
             # write the data
             f.write(content)
             f.close()
+        return (args.report +'/' + name + '_' + str(count + 1) + '.jpg')
 
 #converts the ms time to a timestamp
 def human_time(event):
@@ -148,17 +148,18 @@ def csv_add(value, csv_data, count, data_camera, baseURL, header):
     camera = camera_name(value['deviceUuid'], data_camera)
     csv_data[count].append(camera)
     thumbnail = baseURL + value['thumbnailS3Key']
-    saving_img(thumbnail, name, count)
-    csv_data[count].append(count + 1)
+    file_name = saving_img(thumbnail, name, count)
+    csv_data[count].append(file_name)
     with open(args.report + '/' + args.csv + '.csv', 'w', newline = '') as f:
         writer = csv.writer(f)     # create the csv writer
         writer.writerow(header)    # write the header
         writer.writerows(csv_data) # write the data
 
-def csv_work(data_recentFaces):
+def csv_work():
+    data_recentFaces = recent_faces()
     count = 0
-    baseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
-    header = ['Name', 'Date', 'Camera', 'Sighting']
+    mediaBaseURL = "https://media.rhombussystems.com/media/faces?s3ObjectKey="
+    header = ['Name', 'Date', 'Camera', 'Image File Name']
     csv_data = []
     data_camera = camera_data()
     #gets a path and makes a directory file to the path
@@ -196,7 +197,7 @@ def csv_work(data_recentFaces):
             count += 1
 
 def main():
-    data_recentFaces = recent_faces()
-    csv_work(data_recentFaces)
+    csv_work()
 
-main()
+if __name__ == "__main__":
+    main()
